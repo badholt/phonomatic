@@ -164,6 +164,24 @@ public class Phonomatic {
                         + "\n  \u2022  'catalog' - will print entire loaded dictionary");
             } else if (command.equals("catalog")) {
             } else if (command.equals("search")) {
+                if (line.length < 3) {
+                    System.out.println("Please enter at least one feature with the 'find' command.");
+                } else {
+                    if (line.length%2 != 0) {
+                        
+                    }
+                    int a = 1;
+                    int b = 2;
+                    for (int i = 1; i == line.length/2; i++) {                        
+                        searchByFeature(line[a], line[b]);
+                        a ++;
+                        b ++;
+                    }                    
+                }
+                String first = inputScan.next();
+                String second = inputScan.next();
+                System.out.println(searchByFeature(first, second));
+            } else if (command.equals("find")) {
                 if (line.length < 2) {
                     System.out.println("Please enter at least one character with the 'search' command.");
                 } else {
