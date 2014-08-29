@@ -1,13 +1,20 @@
-package src;
+import java.awt.Font;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.ListIterator;
 import java.util.Scanner;
+import java.lang.Character.UnicodeBlock;
+import java.awt.*;
+import java.applet.Applet;
+
+import javax.swing.JTextArea;
 
 
-public class Phonomatic {
+public class Phonomatic extends Applet {
 	
 	private static class Entry<String, Integer> {
 		String feature; int value; String character;
@@ -34,9 +41,15 @@ public class Phonomatic {
     public Phonomatic() {
         Phonomatic.characters = new ArrayList<>();
         Phonomatic.features = new ArrayList<>();
-    };    
+    };
     
-    private static void loadDictionary()
+    public static void paintString (Graphics g, String s) {
+    	Font myFont = new Font("TimesRoman", Font.PLAIN, 12);
+    	g.setFont(myFont);
+    	g.drawString(s, 20, 20);
+    }
+    
+    public static void loadDictionary()
             throws FileNotFoundException {
         	Phonomatic dictionary = new Phonomatic();
             
@@ -47,7 +60,7 @@ public class Phonomatic {
             int count = 0;
             while (scanner.hasNextLine()) {
             	String feature = scanner.nextLine().trim().toLowerCase();
-            	e = new Entry<String, Integer>(feature, count);            	
+            	e = new Entry<String, Integer>(feature, count);
             	Phonomatic.features.add(e);
                 count += 1;
             }
@@ -57,6 +70,12 @@ public class Phonomatic {
             scanner = new Scanner(file2, "UTF-8");
             while (scanner.hasNextLine()) {
             	String character = scanner.next().trim();
+            	try {
+            		Integer.parseInt(character);
+            		character = "\\u" + character;
+            	} catch (NumberFormatException notInt) {
+            		//do nothing
+            	}
             	ArrayList<Entry<String, Integer>> clone = 
             			new ArrayList<Entry<String, Integer>>();
             	
@@ -88,7 +107,11 @@ public class Phonomatic {
     			    //Translates each Entry in the features list to a string and adds it to s:
     		        for (Entry<String, Integer> e : a) {
     	                if (e.value > 0) {
-    	                    plusminus = "+ ";
+    	                	if (e.value != 2) {
+    	                		plusminus = "+ ";
+    	                	} else {
+    	                		plusminus = "+/-";
+    	                	}    	                    
     	                } else if (e.value < 0) {
     	                    plusminus = "- ";
     	                } else {
@@ -118,34 +141,75 @@ public class Phonomatic {
         return out;
     }
     
-    public static String searchByFeature(String sign, String feature) {
-    	ListIterator<ArrayList<Entry<String, Integer>>> it = Phonomatic.characters.listIterator();
-		int parameter = 0;
-    	if (sign.equals("+")) {
-			parameter = 1;
-		} else if (sign.equals("-")) {
-			parameter = -1;
-		} else if (sign.equals("0")) {
-			parameter = 0;
-		} else {
-			System.out.println(sign + "is not a valid value for " + feature);
-		}
-    	Entry<String, Integer> fake = new Entry<String, Integer>(feature, parameter);
-    	int index = Phonomatic.features.indexOf(fake);
-    	if (index != -1) {
-    		String list = "[";
-        	while (it.hasNext()) {
-    			Entry<String, Integer> e = it.next().get(index);
-    			if (e.value == parameter) {
-    				list += e.character + ", ";
-    			};
+    public static String searchByFeature(String[] line) {
+    	ArrayList<Entry<String, Integer>> list = new ArrayList<Entry<String, Integer>>();
+    	int a = 1;
+    	int b = 2;
+    	for (int i = 1; i < line.length/2 + 1; i++) {
+    		String sign = line[a];
+    		String feature = line[b];
+    		int parameter = 0;
+        	if (sign.equals("+")) {
+    			parameter = 1;
+    		} else if (sign.equals("-")) {
+    			parameter = -1;
+    		} else if (sign.equals("0")) {
+    			parameter = 0;
+    		} else {
+    			System.out.println(sign + " is not a valid value for " + feature);
     		}
-        	//Trim -2
-        	list += "]";
-    		return list;
-    	} else {
-    		return "The feature '" + feature + "' is not present within the Phonomatic database.\n";
+        			
+        	Entry<String, Integer> fake = new Entry<String, Integer>(feature, parameter);
+        	int index =	Phonomatic.features.indexOf(fake);
+        	if (index != -1) {
+        		if (i == 1) {
+            		ListIterator<ArrayList<Entry<String, Integer>>> it = Phonomatic.characters.listIterator();
+                	while (it.hasNext()) {
+            			Entry<String, Integer> e = it.next().get(index);
+            			if (parameter != 0) {
+            				if (e.value == parameter | e.value == 2) {
+                				list.add(e);
+                			};
+            			} else {
+            				if (e.value == parameter) {
+                				list.add(e);
+                			};
+            			}
+            		}
+            	} else {
+            		int l = 0;
+            		while (l < list.size()) {
+            			Entry<String, Integer> e = list.get(l);
+	            			int j = 0;
+	            			while (j < Phonomatic.characters.size()) {
+	            				ArrayList<Entry<String, Integer>> character = Phonomatic.characters.get(j);
+	            				if (character.get(0).character.equals(e.character)) {
+	            					if (character.get(index).value != parameter) {
+	                    				list.remove(l);
+	                    				l--;
+	                    			}
+	            					j = Phonomatic.characters.size();
+	            				}
+	            				j += 1;
+	            			}
+	            		l ++;
+            		}
+            	} 
+        	} else {
+        		return "The feature '" + feature + "' is not present within the Phonomatic database.\n";
+        	}
+        	a += 2;
+        	b += 2;
+        }
+    	String out = "[";
+    	for (Entry<String, Integer> e : list) {
+			out += e.character + ", ";
+		}
+    	if (out.length() > 1) {
+    		out = out.substring(0, out.length() - 2);
     	}    	
+    	out += "]";
+    	return out;
     }
     
     public static void main(String[] args) throws FileNotFoundException {
@@ -155,7 +219,7 @@ public class Phonomatic {
         System.out.println("Welcome to the Phonomatic. For more information, enter 'info'");
         while (inputScan.hasNext()) {            
             String input = inputScan.nextLine();
-            String[] line = input.split(" ");
+            String[] line = input.toLowerCase().split(" ");
             String command = line[0];
             if (command.equals("info")) {
                 System.out.println("Enter the following commands as needed:"
@@ -165,22 +229,13 @@ public class Phonomatic {
             } else if (command.equals("catalog")) {
             } else if (command.equals("search")) {
                 if (line.length < 3) {
-                    System.out.println("Please enter at least one feature with the 'find' command.");
+                    System.out.println("Please enter at least one feature with the 'search' command.");
                 } else {
-                    if (line.length%2 != 0) {
-                        
+                    if (line.length%2 - 1 != 0) {
+                        System.out.println("Each feature must be accompanied by a desired value.\nexample: \"+ voice\"");
                     }
-                    int a = 1;
-                    int b = 2;
-                    for (int i = 1; i == line.length/2; i++) {                        
-                        searchByFeature(line[a], line[b]);
-                        a ++;
-                        b ++;
-                    }                    
+                    System.out.println(searchByFeature(line));
                 }
-                String first = inputScan.next();
-                String second = inputScan.next();
-                System.out.println(searchByFeature(first, second));
             } else if (command.equals("find")) {
                 if (line.length < 2) {
                     System.out.println("Please enter at least one character with the 'search' command.");
